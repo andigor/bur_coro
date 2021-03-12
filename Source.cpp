@@ -20,9 +20,12 @@ public:
     if (m_last_result_set) {
       throw bur_coro_exception();
     }
-
+    if (!is_executing()) {
+      throw bur_coro_exception();
+    }
     m_last_result = res;
     m_last_result_set = true;
+    m_last_result_read = false;
   }
   UINT read_last_result() {
     if (!m_last_result_set) {
@@ -31,7 +34,11 @@ public:
     if (m_last_result_read) {
       throw bur_coro_exception();
     }
+    if (!is_exemaning()) {
+      throw bur_coro_exception();
+    }
     m_last_result_read = true;
+    m_last_result_set = false;
     return m_last_result;
   }
   void set_execution_position(int pos) {
@@ -40,19 +47,29 @@ public:
   int get_execution_position() const {
     return m_execution_position;
   }
+  operator int() {
+    return get_execution_position();
+  }
   enum exection_state {
       execution_state_none = 0
     , execution_state_executing = 1
-    , exection_state_examinate_result = 2
+    , execution_state_examinate_result = 2
+    , execution_state_finished = 3
   };
-  void reset_execution_state() {
+  void set_execution_state_execution() {
     m_execution_state = execution_state_executing;
   }
-  void go_to_result_examination() {
+  void set_execution_state_examination() {
     if (m_execution_state != execution_state_executing) {
       throw bur_coro_exception();
     }
-    m_execution_state = exection_state_examinate_result;
+    m_execution_state = execution_state_examinate_result;
+  }
+  void set_execution_state_finished() {
+    if (m_execution_state != execution_state_examinate_result) {
+      throw bur_coro_exception();
+    }
+    m_execution_state = execution_state_finished;
   }
   bool is_executing() const
   {
@@ -60,7 +77,11 @@ public:
   }
   bool is_exemaning() const
   {
-    return m_execution_state == exection_state_examinate_result;
+    return m_execution_state == execution_state_examinate_result;
+  }
+  bool is_finished() const
+  {
+    return m_execution_state == execution_state_finished;
   }
 private:
   UINT m_last_result = ERR_OK;
@@ -68,126 +89,108 @@ private:
   bool m_last_result_set = false;
 
   int m_execution_position = -1;
-  int m_execution_state = execution_state_none;
+  int m_execution_state = execution_state_executing;
 };
 
 
-int bur_func_1(int& arg)
-{
-  ++arg;
-  return 0; // ready
-}
-
-int bur_func_2(int& arg)
-{
-  ++arg;
-  if (arg < 10) {
-    return 65535; // busy
-  }
-  return 0; // ready
-}
-
-#define REENTER() \
-switch(m_pos) \
-case -1:      \
-if (0) {      \
-bailout:      \
-break;        \
+#define REENTER(cor)         \
+switch(auto& cor_val = cor)  \
+case -1:                     \
+if (cor_val.is_finished()) { \
+bailout:                     \
+break;                       \
 } else
 
-
-#define YIELD_IMPL(n) \
-{\
-m_pos = n;\
-}\
-case n: \
-for(m_iter_num = 0;;++m_iter_num) \
-if (m_iter_num == 2) { \
-goto bailout;\
-}\
-else if (m_iter_num == 1) {\
-if (m_status == 0) {\
-break;\
-}\
-}\
-else m_status =
-
-
+#define YIELD_IMPL(n)                                       \
+{                                                           \
+  cor_val.set_execution_position(n);                        \
+}                                                           \
+case n:                                                     \
+for(;;cor_val.set_execution_state_examination())            \
+  if (cor_val.is_exemaning()) {                             \
+    if (cor_val.read_last_result() == ERR_OK) {             \
+      cor_val.set_execution_state_finished();               \
+      goto bailout;                                         \
+    }                                                       \
+    else {                                                  \
+      cor_val.set_execution_state_execution();              \
+      break;                                                \
+    }                                                       \
+  }                                                         \
+  else
 
 #define YIELD YIELD_IMPL(__COUNTER__ + 1)
-#if 1
-struct bur_task : bur_coro{
-  int operator()()
+
+class bur_coro_number_increaser
+{
+public:
+  bur_coro_number_increaser(bur_coro& coro, int max_num)
+    : m_bur_coro(coro)
+    , m_max_number(max_num)
+
   {
-    REENTER() {
-      YIELD bur_func_1(a); 
-      std::cout << "after first: " << a << std::endl;
-      a += 150;
-      YIELD bur_func_2(a);
-      std::cout << "after second : " << a << std::endl;
-    }
-    return 0;
   }
-  int a = 0;
+
+  void increase_number()
+  {
+    if (m_number >= m_max_number) {
+      m_bur_coro.set_last_result(ERR_OK);
+      return;
+    }
+    ++m_number;
+    if (m_number >= m_max_number) {
+      m_bur_coro.set_last_result(ERR_OK);
+      return;
+    }
+    m_bur_coro.set_last_result(ERR_FUB_BUSY);
+  }
+
+  int get_number() const
+  {
+    return m_number;
+  }
+
+  void reset()
+  {
+    m_number = 0;
+  }
+private:
+  bur_coro& m_bur_coro;
+  int m_number = 0;
+  const int m_max_number = 0;
+};
+
+class resumable_number_increaser : public bur_coro
+{
+public:
+  resumable_number_increaser(int max_val)
+    :m_inc(*this, max_val)
+  {
+  }
+
+  void operator()()
+  {
+    REENTER(*this) {
+      YIELD m_inc.increase_number();
+    }
+  }
+  int get_number() const
+  {
+    return m_inc.get_number();
+  }
+private:
+  bur_coro_number_increaser m_inc;
 };
 
 
 int main()
 {
-  bur_task tt;
-  tt();
-  std::cout << "after first call: " << std::endl;
-  tt();
-  std::cout << tt.a << std::endl;
+  resumable_number_increaser incr(100);
+  incr();
+  assert(incr.get_number() == 1);
+  assert(incr.get_number() == 1);
+  incr();
+  assert(incr.get_number() == 2);
+  assert(incr.get_number() == 2);
 }
-#endif
 
-#if 0
-void func()
-{
-	int m_pos = -1;
-	//int m_iter_num;
-  //int m_status;
-  int a = 1;
-
-  struct bur_task : bur_coro {
-    int operator()()
-    {
-    switch (m_pos) 
-    case -1: 
-      if (0) 
-      { 
-      bailout: 
-        break; 
-      }
-      else {
-        {m_pos = 0 + 1; }
-        case 0 + 1: 
-          for (m_iter_num = 0;; ++m_iter_num) 
-            if (m_iter_num == 2) { goto bailout; }
-            else if (m_iter_num == 1) { 
-              if (m_status != 0) { break; } 
-            }
-            else m_status = bur_func_1(a);
-            a = 150;
-            {m_pos = 1 + 1; }
-            case 1 + 1: 
-          for (m_iter_num = 0;; ++m_iter_num) 
-            if (m_iter_num == 2) { goto bailout; }
-            else if (m_iter_num == 1) { if (m_status != 0) { break; } }
-            else m_status = bur_func_2(a);
-      }
-      return 0;
-    }
-    int a = 0;
-  };
-
-  bur_task t;
-  t();
-  t();
-}
-int main()
-{
-  func();
-}
-#endif
