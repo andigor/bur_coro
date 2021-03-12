@@ -144,6 +144,10 @@
       <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</PreprocessToFile>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="bur_coro.h" />
+    <ClInclude Include="bur_std.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
