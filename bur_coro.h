@@ -56,7 +56,18 @@ public:
     , execution_state_executing = 1
     , execution_state_examinate_result = 2
     , execution_state_finished = 3
+    , execution_state_max = 4
   };
+  void next_execution_state()
+  {
+    if (m_execution_state < execution_state_executing) {
+      throw bur_coro_exception();
+    }
+    else if (m_execution_state >= execution_state_finished) {
+      throw bur_coro_exception();
+    }
+    ++m_execution_state;
+  }
   void set_execution_state_execution() {
     m_execution_state = execution_state_executing;
   }
@@ -107,16 +118,15 @@ break;                       \
   cor_val.set_execution_position(n);                        \
 }                                                           \
 case n:                                                     \
-for(;;cor_val.set_execution_state_examination())            \
+for(;;cor_val.next_execution_state())                       \
   if (cor_val.is_exemaning()) {                             \
-    if (cor_val.read_last_result() != ERR_FUB_BUSY) {       \
-      cor_val.set_execution_state_finished();               \
-      goto bailout;                                         \
-    }                                                       \
-    else {                                                  \
+    if (cor_val.read_last_result() == ERR_FUB_BUSY) {       \
       cor_val.set_execution_state_execution();              \
       break;                                                \
     }                                                       \
+  }                                                         \
+  else if (cor_val.is_finished()) {                         \
+    goto bailout;                                           \
   }                                                         \
   else
 

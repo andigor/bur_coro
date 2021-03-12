@@ -68,10 +68,13 @@ private:
 
 int main()
 {
-  resumable_number_increaser incr(100);
+  resumable_number_increaser incr(2);
   incr();
   assert(incr.get_number() == 1);
   assert(incr.get_number() == 1);
+  incr();
+  assert(incr.get_number() == 2);
+  assert(incr.get_number() == 2);
   incr();
   assert(incr.get_number() == 2);
   assert(incr.get_number() == 2);
