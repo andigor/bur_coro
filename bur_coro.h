@@ -109,7 +109,7 @@ break;                       \
 case n:                                                     \
 for(;;cor_val.set_execution_state_examination())            \
   if (cor_val.is_exemaning()) {                             \
-    if (cor_val.read_last_result() == ERR_OK) {             \
+    if (cor_val.read_last_result() != ERR_FUB_BUSY) {       \
       cor_val.set_execution_state_finished();               \
       goto bailout;                                         \
     }                                                       \
