@@ -24,6 +24,10 @@ public:
     m_last_result_set = true;
     m_last_result_read = false;
   }
+  UINT get_last_result() const
+  {
+    return m_last_result;
+  }
   UINT read_last_result() {
     if (!m_last_result_set) {
       throw bur_coro_exception();
