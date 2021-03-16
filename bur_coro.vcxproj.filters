@@ -26,5 +26,8 @@
     <ClInclude Include="bur_std.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="bur_coro_man.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

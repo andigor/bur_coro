@@ -146,6 +146,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bur_coro.h" />
+    <ClInclude Include="bur_coro_man.h" />
     <ClInclude Include="bur_std.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

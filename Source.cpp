@@ -66,6 +66,8 @@ private:
 };
 
 
+#include "bur_coro_man.h"
+
 int main()
 {
   resumable_number_increaser incr(2);
@@ -78,5 +80,7 @@ int main()
   incr();
   assert(incr.get_number() == 2);
   assert(incr.get_number() == 2);
+
+  test_resumable_class_test();
 }
 
