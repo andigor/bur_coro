@@ -37,6 +37,10 @@ public:
   {
     m_number = 0;
   }
+  bur_coro& get_coro()
+  {
+    return m_bur_coro;
+  }
 private:
   bur_coro& m_bur_coro;
   int m_number = 0;
@@ -65,7 +69,44 @@ private:
   bur_coro_number_increaser m_inc;
 };
 
+struct resumable_with_resumable_lambda : public bur_coro
+{
+  resumable_with_resumable_lambda(int max_val)
+    :m_inc(m_nested_coro, max_val)
+  {
 
+  }
+
+  void operator()()
+  {
+    REENTER(*this) {
+      YIELD [](auto& out_coro, auto& inc){
+        REENTER(inc.get_coro()) {
+          out_coro.set_last_result(ERR_FUB_BUSY);
+          YIELD inc.increase_number();
+          out_coro.set_last_result(inc.get_coro().get_last_result());
+        }
+      }(*this, m_inc);
+    }
+  }
+
+  bur_coro m_nested_coro;
+  bur_coro_number_increaser m_inc;
+};
+
+void test_resumable_with_resumable_lambda()
+{
+  resumable_with_resumable_lambda r(3);
+
+  r();
+  assert(r.m_inc.get_number() == 1);
+  r();
+  assert(r.m_inc.get_number() == 2);
+  r();
+  assert(r.m_inc.get_number() == 3);
+  r();
+  assert(r.m_inc.get_number() == 3);
+}
 #include "bur_coro_man.h"
 
 int main()
@@ -82,5 +123,7 @@ int main()
   assert(incr.get_number() == 2);
 
   test_resumable_class_test();
+
+  test_resumable_with_resumable_lambda();
 }
 
