@@ -35,12 +35,12 @@ public:
     return m_last_result;
   }
   UINT read_last_result() {
-    if (!m_last_result_set) {
-      throw bur_coro_exception();
-    }
-    if (m_last_result_read) {
-      throw bur_coro_exception();
-    }
+    // if (!m_last_result_set) {
+    //   throw bur_coro_exception();
+    // }
+    // if (m_last_result_read) {
+    //   throw bur_coro_exception();
+    // }
     if (!is_examining()) {
       throw bur_coro_exception();
     }
