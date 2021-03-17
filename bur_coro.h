@@ -99,7 +99,7 @@ public:
     }
     m_execution_state = execution_state_yield_finished;
 
-    reset_execution_position();
+    mark_execution_position_as_finished();
   }
   bool is_not_started() const
   {
@@ -123,8 +123,17 @@ public:
   bool is_last_result_read() const {
     return m_last_result_read;
   }
+  bool is_execution_position_finished() const
+  {
+    return m_execution_position == -2;
+  }
+  void reset()
+  {
+    // reinitialize for the new execution
+    *this = bur_coro();
+  }
 private:
-  void reset_execution_position() {
+  void mark_execution_position_as_finished() {
     if (!is_yield_finished()) {
       throw bur_coro_exception();
     }
@@ -144,13 +153,13 @@ private:
 };
 
 
-#define REENTER(cor)        \
-switch(auto& cor_val = cor) \
-case -1:                    \
-case -2:                    \
-if (cor_val == -2) {        \
-    bailout:                \
-break;                      \
+#define REENTER(cor)                                     \
+switch(auto& cor_val = cor)                              \
+case -1:                                                 \
+case -2:                                                 \
+if (cor_val.is_execution_position_finished()) {          \
+    bailout:                                             \
+break;                                                   \
 } else
 
 #define YIELD_IMPL(n)                                    \
